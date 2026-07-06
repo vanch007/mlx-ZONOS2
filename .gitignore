@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+benchmark/out/
+asr_output/
+logs/
+*.egg-info/
+*.pcm
+*.wav
+models/Zyphra-ZONOS2-mlx/
+models/**/*.safetensors
+models/**/model.safetensors.index.json

@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlx-zonos2"
+version = "0.1.0"
+description = "Apple Silicon MLX-native ZONOS2 TTS HTTP server"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mlx>=0.31.1",
+    "mlx-audio @ git+https://github.com/lucasnewman/mlx-audio.git@add-zonos2",
+    "fastapi>=0.95.0",
+    "uvicorn[standard]>=0.22.0",
+    "gradio>=4.44.0",
+    "numpy>=1.26.4",
+    "huggingface_hub>=1.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0.0", "httpx>=0.24.0"]
+convert = ["torch>=2.0"]
+
+[project.scripts]
+mlx-zonos2-server = "mlx_zonos2.server.api_server:main"
+mlx-zonos2-webui = "mlx_zonos2.server.gradio_webui:main"
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.uv]
+dev-dependencies = ["pytest>=7.0.0", "httpx>=0.24.0"]
