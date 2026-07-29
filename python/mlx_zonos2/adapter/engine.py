@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -12,6 +13,48 @@ import numpy as np
 from mlx_zonos2.server.args import ServerArgs
 
 logger = logging.getLogger(__name__)
+
+_DAC_REPOSITORY = "mlx-community/descript-audio-codec-44khz"
+
+
+def resolve_local_dac_path(cache_root: str | os.PathLike[str] | None = None) -> str:
+    """Require the ZONOS2 DAC to be fully cached before generation starts.
+
+    ``mlx-audio`` otherwise downloads this dependency lazily on the first
+    request, which leaves an API call appearing hung when network use is
+    disabled or interrupted.
+    """
+    from pathlib import Path
+
+    configured = os.environ.get("ZONOS2_DAC_MODEL_PATH", "").strip()
+    if configured:
+        candidates = [Path(configured).expanduser()]
+    else:
+        root = Path(
+            cache_root or os.environ.get("HF_HUB_CACHE", "~/.cache/huggingface/hub")
+        ).expanduser()
+        repo_cache = root / "models--mlx-community--descript-audio-codec-44khz"
+        candidates = []
+        ref = repo_cache / "refs" / "main"
+        if ref.exists():
+            candidates.append(repo_cache / "snapshots" / ref.read_text().strip())
+        candidates.extend((repo_cache / "snapshots").glob("*"))
+
+    checked: list[str] = []
+    for candidate in candidates:
+        if not candidate.exists() or str(candidate) in checked:
+            continue
+        checked.append(str(candidate))
+        if (candidate / "config.json").is_file() and (
+            candidate / "model.safetensors"
+        ).is_file():
+            return str(candidate.resolve())
+
+    location = ", ".join(checked) or "no local DAC snapshot"
+    raise Zonos2EngineError(
+        f"Missing complete local {_DAC_REPOSITORY} dependency ({location}). "
+        "Automatic download is disabled; set ZONOS2_DAC_MODEL_PATH to a complete snapshot."
+    )
 
 
 class Zonos2EngineError(RuntimeError):
@@ -70,6 +113,7 @@ class Zonos2Engine:
         return int(self.config.model_config.get("sample_rate", 44100))
 
     def load(self) -> None:
+        resolve_local_dac_path()
         try:
             from mlx_audio.tts import load as load_tts
         except ImportError as exc:
