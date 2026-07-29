@@ -43,13 +43,13 @@ def model_config_with_speaking_rate() -> dict:
             "trailing_silence_s",
         ],
         "quality_buckets": {
-            "lufs": ["-1000--50", "-50+",
-            "estimated_snr": ["0-0", "0+",
-            "max_pause": ["0+",
-            "estimated_bandlimit_hz": ["495.3-3433", "3433+",
-            "leading_silence_s": ["0+",
-            "trailing_silence_s": ["0-0.05", "0.05+",
-        ],
+            "lufs": ["-1000--50", "-50+"],
+            "estimated_snr": ["0-0", "0+"],
+            "max_pause": ["0+"],
+            "estimated_bandlimit_hz": ["495.3-3433", "3433+"],
+            "leading_silence_s": ["0+"],
+            "trailing_silence_s": ["0-0.05", "0.05+"],
+        },
         "max_seqlen": 6144,
         "sample_rate": 44100,
     }
@@ -82,14 +82,16 @@ class TestSpeakingRateBucket:
             speaking_rate_enabled=False,
         ) is None
 
-    def test_disabled_with_inputs_raises(self, model_config_no_conditioning):
-        """speaking_rate_enabled=False with inputs raises ValueError."""
-        with pytest.raises(ValueError, match="does not support"):
+    def test_disabled_with_inputs_returns_none(self, model_config_no_conditioning):
+        """Disabled speaking-rate conditioning ignores optional rate inputs."""
+        assert (
             resolve_speaking_rate_bucket(
                 model_config_no_conditioning,
                 speed=1.0,
                 speaking_rate_enabled=False,
             )
+            is None
+        )
 
     def test_direct_bucket_value(self, model_config_with_speaking_rate):
         """Direct bucket value in valid range is returned."""
@@ -317,10 +319,9 @@ class TestLanguageNormalization:
         """Hyphens converted to underscores."""
         assert normalize_tts_request_language("zh-Hans-CN") == "zh_hans_cn"
 
-    def test_unsupported_language_raises(self):
-        """Unsupported language raises ValueError."""
-        with pytest.raises(ValueError, match="Unsupported language"):
-            normalize_tts_request_language("xx-XX")
+    def test_unknown_language_is_normalized_and_preserved(self):
+        """The multilingual model accepts normalized codes beyond English."""
+        assert normalize_tts_request_language("xx-XX") == "xx_xx"
 
     def test_empty_language_default(self):
         """Empty/whitespace language handled."""
