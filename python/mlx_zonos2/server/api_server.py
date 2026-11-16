@@ -112,9 +112,12 @@ async def lifespan(_: FastAPI):
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
     engine = Zonos2Engine(args)
     try:
-        engine.load()
+        # MLX streams are thread-bound: load and warm up on the same worker thread that serves requests.
+        import asyncio
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(engine._executor, engine.load)
         if args.warm_on_startup:
-            engine.warmup()
+            await loop.run_in_executor(engine._executor, engine.warmup)
     except Zonos2EngineError as exc:
         logger.error("%s", exc)
         raise SystemExit(str(exc)) from exc
